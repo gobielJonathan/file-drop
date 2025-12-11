@@ -1,6 +1,6 @@
 import { FILE_DONE, FILE_METADATA, FILE_PROGRESS } from "@/utils/event-peer";
 
-const chunkSize = 32 * 1024; // 32KB
+const chunkSize = 512 * 1024; // 512KB
 
 export default function useSendFile() {
 

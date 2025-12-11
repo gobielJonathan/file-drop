@@ -1,6 +1,6 @@
 import { NEW_CONNECTION } from "@/utils/event-peer";
 import Peer from "peerjs";
-import { ref, onUnmounted } from 'vue';
+import { onUnmounted } from 'vue';
 
 export default function usePeer({
     onNewConnection = () => { },
