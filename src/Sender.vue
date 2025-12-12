@@ -1,12 +1,15 @@
 <script setup>
 import { ref, onMounted, useTemplateRef, reactive } from 'vue'
+import QrCode from 'qrcode'
+import { useDropZone } from '@vueuse/core'
+
+
 import useSendFile from './composables/use-send-file';
 import usePeer from './composables/use-peer';
 import uid from './utils/uid';
 import createPeerId from './utils/create-peer-id';
 import copyText from './utils/copy-text';
 import { FILE_DONE, FILE_PROGRESS, NEW_CONNECTION, NEW_CONNECTION_ACCEPTED, NEW_CONNECTION_ASK_FOR_ACCEPT, NEW_CONNECTION_DISCONNECTED } from './utils/event-peer';
-import { useDropZone } from '@vueuse/core'
 
 import MaterialSymbolsArrowBack from './icons/MaterialSymbolsArrowBack.vue';
 import MaterialSymbolsContentCopyOutline from './icons/MaterialSymbolsContentCopyOutline.vue';
@@ -17,10 +20,14 @@ import MaterialSymbolsPerson from './icons/MaterialSymbolsPerson.vue';
 import MaterialSymbolsSend from './icons/MaterialSymbolsSend.vue';
 import MaterialSymbolsUpload from './icons/MaterialSymbolsUpload.vue';
 import CircularProgress from './components/circular-progress.vue';
+import Modal from './components/modal.vue';
+import MaterialSymbolsQrCode from './icons/MaterialSymbolsQrCode.vue';
 
 const clients = ref([])
 const file = ref(null)
-let progressUpload = reactive({})
+const isOpenModalScanQr = ref(false)
+const progressUpload = reactive({})
+const qrCodeImageUrl = ref('')
 
 const sendFile = useSendFile()
 
@@ -92,6 +99,18 @@ onMounted(() => {
     createPeerConnection(createPeerId(uniqueId.value))
 })
 
+onMounted(() => {
+    QrCode.toDataURL(uniqueId.value)
+        .then(url => {
+            // You can use the generated QR code URL as needed
+            console.log('QR Code URL:', url);
+            qrCodeImageUrl.value = url;
+        })
+        .catch(err => {
+            console.error('Error generating QR code:', err);
+        });
+})
+
 const onFileChange = event => {
     file.value = event.target.files?.[0] || null
 }
@@ -116,6 +135,10 @@ const onClearFile = () => {
 </script>
 
 <template>
+    <Modal v-model="isOpenModalScanQr" size="md" @close="isOpenModalScanQr = false">
+        <img :src="qrCodeImageUrl" class="w-full h-full object-contain" alt="">
+    </Modal>
+    
     <div class="max-w-4xl mx-auto px-4 sm:px-8 py-4 sm:py-8">
         <button
             class="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover-elevate active-elevate-2 border border-transparent min-h-8 rounded-md mb-2"
@@ -128,11 +151,18 @@ const onClearFile = () => {
         <div class="shadcn-card rounded-xl border bg-card border-card-border text-card-foreground shadow-sm p-4 sm:p-6">
             <p class="text-xs sm:text-sm font-medium text-muted-foreground mb-1">Your Sender ID</p>
             <p class="text-base sm:text-lg font-mono font-bold truncate">{{ uniqueId }}</p>
-            <button
+            <div class="flex gap-x-2">
+                <button
                 class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover-elevate active-elevate-2 bg-secondary text-secondary-foreground border border-secondary-border h-9 w-9 cursor-pointer"
                 @click="copyText(uniqueId)">
                 <MaterialSymbolsContentCopyOutline />
             </button>
+            <button 
+            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover-elevate active-elevate-2 bg-secondary text-secondary-foreground border border-secondary-border h-9 w-9 cursor-pointer"
+             @click="isOpenModalScanQr = true">
+                        <MaterialSymbolsQrCode />
+                    </button>
+            </div>
         </div>
 
 

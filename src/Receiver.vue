@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
+
 import usePeer from './composables/use-peer';
 import uid from './utils/uid';
 import createPeerId from './utils/create-peer-id';
@@ -17,6 +18,10 @@ import MaterialSymbolsClose from './icons/MaterialSymbolsClose.vue';
 import MaterialSymbolsSignalDisconnected from './icons/MaterialSymbolsSignalDisconnected.vue';
 import ProgressBar from './components/progress-bar.vue';
 import MaterialSymbolsDownload from './icons/MaterialSymbolsDownload.vue';
+import MaterialSymbolsAndroidCamera from './icons/MaterialSymbolsAndroidCamera.vue';
+import Modal from './components/modal.vue';
+
+const QrcodeStream = defineAsyncComponent(() => import('vue-qrcode-reader').then(module => module.QrcodeStream));
 
 const incomingChunks = ref([]);
 const incomingFileMeta = ref(null);
@@ -25,6 +30,7 @@ const hasNewComingReceive = ref(false);
 const progressUploadFile = ref(0);
 const hasConnectSender = ref(null);
 const peerConn = ref(null);
+const isOpenModalScanQr = ref(false);
 
 
 const { createPeerConnection, connectToPeer } = usePeer({
@@ -78,15 +84,14 @@ onUnmounted(() => {
                     id: myId.value
                 }
             }
-            )) 
+            ))
         peerConn.value.close()
     }
 })
 
 
 const onConnectSender = async () => {
-    const senderIdEl = senderUniqueId.value;
-    const _peerConn = await connectToPeer(senderIdEl.value)
+    const _peerConn = await connectToPeer(senderUniqueId.value)
     peerConn.value = _peerConn;
     hasConnectSender.value = true;
     _peerConn.send(JSON.stringify({
@@ -100,6 +105,10 @@ const onConnectSender = async () => {
 const onDisconnectSender = () => {
     hasConnectSender.value = false;
     senderUniqueId.value = null;
+    incomingFileMeta.value = null;
+    hasNewComingReceive.value = false;
+    incomingChunks.value = [];
+
     peerConn.value.send(
         JSON.stringify({
             type: NEW_CONNECTION_DISCONNECTED,
@@ -115,8 +124,7 @@ const onDisconnectSender = () => {
 
 const onAcceptIncomingFile = async () => {
     // Logic to accept and receive the incoming file
-    const senderIdEl = senderUniqueId.value;
-    const peerConn = await connectToPeer(senderIdEl.value)
+    const peerConn = await connectToPeer(senderUniqueId.value)
     peerConn.send(JSON.stringify({
         type: NEW_CONNECTION_ACCEPTED,
         data: {
@@ -128,8 +136,7 @@ const onAcceptIncomingFile = async () => {
 
 const onRejectIncomingFile = async () => {
     // Logic to reject the incoming file
-    const senderIdEl = senderUniqueId.value;
-    const peerConn = await connectToPeer(senderIdEl.value)
+    const peerConn = await connectToPeer(senderUniqueId.value)
     peerConn.send(JSON.stringify({
         type: NEW_CONNECTION_REJECTED,
         data: {
@@ -143,10 +150,21 @@ const onRejectIncomingFile = async () => {
 const onDownloadFile = () => {
     downloadFile(new Blob(incomingChunks.value), incomingFileMeta.value.fileName);
 }
+
+const onQrCodeDetect = (detectedCodes) => {
+    if (detectedCodes.length > 0) {
+        senderUniqueId.value = detectedCodes[0].rawValue
+        isOpenModalScanQr.value = false
+    }
+}
 </script>
 
 
 <template>
+
+    <Modal v-model="isOpenModalScanQr" size="md" @close="isOpenModalScanQr = false">
+        <QrcodeStream @detect="onQrCodeDetect"></QrcodeStream>
+    </Modal>
 
     <div class="max-w-4xl mx-auto px-4 sm:px-8 py-4 sm:py-8">
         <button
@@ -171,21 +189,28 @@ const onDownloadFile = () => {
 
 
         <div class="shadcn-card rounded-xl border bg-card border-card-border text-card-foreground shadow-sm p-4 sm:p-6">
+            <div class="space-y-2">
+                <div class="flex items-center gap-x-2">
+                    <p class="text-xs sm:text-sm font-medium">Status:</p>
+                    <div v-if="!hasConnectSender"
+                        class="whitespace-nowrap inline-flex items-center rounded-md border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-secondary-foreground text-xs">
+                        Disconnected
+                    </div>
 
-            <div class="flex flex-wrap items-center gap-2">
-                <p class="text-xs sm:text-sm font-medium">Status:</p>
-                <div v-if="!hasConnectSender"
-                    class="whitespace-nowrap inline-flex items-center rounded-md border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-secondary-foreground text-xs">
-                    Disconnected
+                    <div v-if="hasConnectSender"
+                        class="whitespace-nowrap inline-flex items-center rounded-md border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-xs text-xs">
+                        Connected to {{ senderUniqueId.value }}
+                    </div>
                 </div>
 
-                <div v-if="hasConnectSender"
-                    class="whitespace-nowrap inline-flex items-center rounded-md border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-xs text-xs">
-                    Connected to {{ senderUniqueId.value }}
+                <div class="flex items-center">
+                    <input v-model="senderUniqueId" type="text" name="" id=""
+                        placeholder="Enter Sender ID (e.g. ABC-123-XYZ)"
+                        class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm font-mono text-sm">
+                    <button class="p-2 cursor-pointer" @click="isOpenModalScanQr = true">
+                        <MaterialSymbolsAndroidCamera />
+                    </button>
                 </div>
-
-                <input ref="senderUniqueId" type="text" name="" id="" placeholder="Enter Sender ID (e.g. ABC-123-XYZ)"
-                    class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm font-mono text-sm">
 
                 <button v-if="!hasConnectSender"
                     class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover-elevate active-elevate-2 bg-primary text-primary-foreground border border-primary-border min-h-9 px-4 py-2 w-full sm:w-auto cursor-pointer"
