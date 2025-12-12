@@ -163,7 +163,7 @@ const onQrCodeDetect = (detectedCodes) => {
 <template>
 
     <Modal v-model="isOpenModalScanQr" size="md" @close="isOpenModalScanQr = false">
-        <QrcodeStream @detect="onQrCodeDetect"></QrcodeStream>
+        <QrcodeStream v-if="isOpenModalScanQr" @detect="onQrCodeDetect"></QrcodeStream>
     </Modal>
 
     <div class="max-w-4xl mx-auto px-4 sm:px-8 py-4 sm:py-8">
