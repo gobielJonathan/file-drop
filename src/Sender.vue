@@ -129,7 +129,9 @@ const sendConfirmationIntoClient = async (peerIdClient) => {
 
 const onClearFile = () => {
     file.value = null
-    progressUpload = {}
+    Object.keys(progressUpload).forEach(key => {
+        delete progressUpload[key]
+    })
 }
 
 </script>
