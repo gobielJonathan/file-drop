@@ -130,7 +130,8 @@ const sendConfirmationIntoClient = async (peerIdClient) => {
 const onClearFile = () => {
     file.value = null
     Object.keys(progressUpload).forEach(key => {
-        delete progressUpload[key]
+        //delete only if upload is completef
+        progressUpload[key] === 100 && delete progressUpload[key]
     })
 }
 
