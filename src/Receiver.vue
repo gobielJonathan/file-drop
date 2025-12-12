@@ -202,7 +202,7 @@ const onQrCodeDetect = (detectedCodes) => {
 
                     <div v-if="hasConnectSender"
                         class="whitespace-nowrap inline-flex items-center rounded-md border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-xs text-xs">
-                        Connected to {{ senderUniqueId.value }}
+                        Connected to {{ senderUniqueId }}
                     </div>
                 </div>
 
